@@ -5,7 +5,7 @@ It uses `http://de.wiktionary.org/w/api.php` API to get the information.
 
 ## Installation
 
-It requires some third party libs: requests, tabulate and bs4. 
+It requires some third party libs: click, requests, tabulate and bs4. 
 
 To install `gede` and collect the requirements:
 

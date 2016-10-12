@@ -1,12 +1,6 @@
 """
 Retrieve declination for given word.
 
-Matching words:
-    -Substantive: singular, first letter should be capital.
-    -Adjective: singular, masculine.
-    -Verb: infinitive.
-    -Pronoun: masculine, singular.
-
 """
 import re
 
@@ -22,7 +16,18 @@ API = 'http://de.wiktionary.org/w/api.php'
 @click.command()
 @click.argument('word', type=unicode)
 def cli(word):
-    """Look for the definition of a word in RAE dictionary
+    """Retrieve declination for given word in german.
+
+    Specifications:
+
+        Substantive: singular, first letter should be capital.
+
+        Adjective: singular, masculine.
+
+        Verb: infinitive.
+
+        Pronoun: masculine, singular.
+
     """
     response = requests.get(API, params={
         'action': 'parse',
@@ -39,33 +44,46 @@ def cli(word):
         )
         table = soup.find(class_=re.compile(r'.*hintergrundfarbe2$'))
 
-        rows = []
-        rowspan = {}
-        for row in table.find_all('tr'):
-            current = []
-            c_cell = 0
-            for cell in row.find_all(re.compile(r'(th|td)')):
-                if str(c_cell) in rowspan and rowspan[str(c_cell)] > 0:
-                    current.append('')
-                    rowspan[str(c_cell)] -= 1
+        if table is not None:
+            rows = []
+            rowspan = {}
+            for row in table.find_all('tr'):
+                current = []
+                c_cell = 0
+                for cell in row.find_all(re.compile(r'(th|td)')):
 
-                if cell.name == 'th':
-                    current.append(click.style(
-                        cell.get_text().replace('\n', ' '), fg='blue'))
-                else:
-                    current.append(cell.get_text().replace('\n', ' '))
+                    if str(c_cell) in rowspan and rowspan[str(c_cell)] > 0:
+                        current.append('')
+                        rowspan[str(c_cell)] -= 1
 
-                if cell.has_attr('colspan'):
-                    current.extend('' for i in range(int(cell['colspan']) - 1))
+                    if cell.name == 'th':
+                        current.append(click.style(
+                            cell.get_text().replace('\n', ' '), fg='blue'))
+                    else:
+                        current.append(cell.get_text().replace('\n', ' '))
 
-                if cell.has_attr('rowspan'):
-                    rowspan[str(c_cell)] = int(cell['rowspan']) - 1
+                    if cell.has_attr('colspan'):
+                        current.extend('' for i in range(
+                            int(cell['colspan']) - 1))
 
-                c_cell += 1
-            rows.append(current)
+                    if cell.has_attr('rowspan'):
+                        rowspan[str(c_cell)] = int(cell['rowspan']) - 1
 
-        click.echo(tabulate.tabulate(rows, headers='firstrow'))
+                    c_cell += 1
+                rows.append(current)
 
+            filter_out = [r'.*Alle weiteren Formen.*']
+
+            data = (e for e in rows
+                    if not any(re.compile(f).match(i)
+                               for f in filter_out for i in e))
+
+            click.echo(tabulate.tabulate(
+                [e for e in data], headers='firstrow'))
+        else:
+            click.secho('No results for word "{}". '.format(word) +
+                        'Are you sure it meets the specifications?',
+                        fg='yellow')
     else:
         click.secho('Error for word "{}". Code: {}. Info: {}'.format(
             word,

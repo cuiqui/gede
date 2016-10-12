@@ -19,19 +19,8 @@ API = 'http://de.wiktionary.org/w/api.php'
               help='Visual text formatting for the output table',
               default='simple')
 def cli(word, table_fmt):
-    """Retrieve declination for given word in german.
+    """Retrieve declination for given word in german."""
 
-    Specifications:
-
-        Substantive: singular, first letter should be capital.
-
-        Adjective: singular, masculine.
-
-        Verb: infinitive.
-
-        Pronoun: masculine, singular.
-
-    """
     response = requests.get(API, params={
         'action': 'parse',
         'format': 'json',

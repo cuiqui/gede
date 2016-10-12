@@ -1,13 +1,13 @@
 """
-Retrieve declination for given word.
+Retrieve declination for given word using wiktionary API.
 
 """
 import re
 
 import click
 import requests
-import bs4
 import tabulate
+import bs4
 
 
 API = 'http://de.wiktionary.org/w/api.php'
@@ -45,50 +45,125 @@ def cli(word, table_fmt):
             response.json()['parse']['text']['*'],
             'html.parser'
         )
-        table = soup.find(class_=re.compile(r'.*hintergrundfarbe2$'))
 
-        if table is not None:
-            rows = []
-            rowspan = {}
-            for row in table.find_all('tr'):
-                current = []
-                c_cell = 0
-                for cell in row.find_all(re.compile(r'(th|td)')):
+        table = HtmlTableParser(
+            soup, class_=re.compile(r'.*hintergrundfarbe2$'))
+        table = table.parse()
 
-                    if str(c_cell) in rowspan and rowspan[str(c_cell)] > 0:
-                        current.append('')
-                        rowspan[str(c_cell)] -= 1
+        table.filter_empty()
+        table.apply_filter('rows', r'.*Alle weiteren Formen.*')
 
-                    if cell.name == 'th':
-                        current.append(click.style(
-                            cell.get_text().replace('\n', ' '), fg='blue'))
-                    else:
-                        current.append(cell.get_text().replace('\n', ' '))
+        click.echo(tabulate.tabulate(
+            table.rows, headers='firstrow', tablefmt=table_fmt))
 
-                    if cell.has_attr('colspan'):
-                        current.extend('' for i in range(
-                            int(cell['colspan']) - 1))
-
-                    if cell.has_attr('rowspan'):
-                        rowspan[str(c_cell)] = int(cell['rowspan']) - 1
-
-                    c_cell += 1
-                rows.append(current)
-
-            filter_out = [r'.*Alle weiteren Formen.*']
-
-            data = (e for e in rows
-                    if not any(re.compile(f).match(i)
-                               for f in filter_out for i in e))
-
-            click.echo(tabulate.tabulate(
-                [e for e in data], headers='firstrow', tablefmt=table_fmt))
-        else:
-            click.secho('No results for word "{}". '.format(word) +
-                        'Are you sure it meets the specifications?',
-                        fg='yellow')
     else:
         click.secho('Error for word "{}". Code: {}. Info: {}'.format(
             word.encode('utf-8'),
             response.json()['error'].get('code', 'unknown'),
             response.json()['error'].get('info', 'unknown')), fg='yellow')
+
+
+class HtmlTableParser(object):
+    """Given an html and keyword arguments accepted
+    in find method of BeautifulSoup, get table and
+    return a Table object.
+
+    """
+
+    def __init__(self, html, **kwargs):
+        self.html = html
+        self.kwargs = kwargs
+        self.table = None
+
+    def parse(self):
+        """Parse an html table. Return a Table object"""
+
+        self.table = self.html.find(**self.kwargs)
+
+        if self.table is None:
+            raise click.ClickException(
+                'No table was found for query: {}'.format(str(self.kwargs)))
+
+        rows = []
+        rowspan = {}
+        for row in self.table.find_all('tr'):
+            current = []
+            c_cell = 0
+            for cell in row.find_all(re.compile(r'(th|td)')):
+
+                if str(c_cell) in rowspan and rowspan[str(c_cell)] > 0:
+                    current.append('')
+                    rowspan[str(c_cell)] -= 1
+
+                if cell.name == 'th':
+                    current.append(click.style(
+                        cell.get_text().replace('\n', ' '), fg='blue'))
+                else:
+                    current.append(cell.get_text().replace('\n', ' '))
+
+                if cell.has_attr('colspan'):
+                    current.extend('' for i in range(
+                        int(cell['colspan']) - 1))
+
+                if cell.has_attr('rowspan'):
+                    rowspan[str(c_cell)] = int(cell['rowspan']) - 1
+
+                c_cell += 1
+            rows.append(current)
+
+        return Table(rows)
+
+    @property
+    def html(self):
+        """Proper HTML """
+        return self._html
+
+    @html.setter
+    def html(self, val):
+        """Verify that html is actually a bs4 object """
+        if not isinstance(val, bs4.element.Tag):
+            raise ValueError(
+                '"{}" is not an instance of bs4.element.Tag'.format(val))
+
+        self._html = val
+
+
+class Table(object):
+    """Table object for easy dealing with rows, columns
+    and filters
+
+    """
+
+    def __init__(self, data):
+        self.rows = data
+        self.columns = zip(*data)
+
+    def filter_empty(self):
+        """ Filter empty values from columns and rows """
+
+        for col in self.columns[:]:
+            if all(val == '' for val in col):
+                for row in self.rows:
+                    del row[self.columns.index(col)]
+                del self.columns[self.columns.index(col)]
+
+    def apply_filter(self, data_item, regex):
+        """ Apply filter to row or column """
+
+        try:
+            regex = re.compile(regex)
+        except ValueError:
+            raise click.ClickException(
+                'Could not compile regular expression "{}"'.format(regex))
+
+        if data_item == 'rows':
+            self.rows = [e for e in self.rows
+                         if not any(regex.match(i) for i in e)]
+            self.columns = zip(*self.rows)
+
+        if data_item == 'columns':
+            for col in self.columns[:]:
+                if any(regex.match(val) for val in col):
+                    for row in self.rows:
+                        del row[self.columns.index(col)]
+                    del self.columns[self.columns.index(col)]

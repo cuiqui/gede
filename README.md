@@ -23,16 +23,27 @@ Akkusativ  das Gemüt               die Gemüter
 ```
 
 ## Usage
+```
+$ gede --help
+Usage: gede [OPTIONS] WORD
 
+  Retrieve declination for given word in german.
+
+Options:
+  --table-fmt [fancy_grid|grid|html|latex|latex_booktabs|mediawiki|orgtbl|pipe|plain|psql|rst|simple|tsv]
+                                  Visual text formatting for the output table
+```
 Rules for looking german words are the same as for any dictionary:
-* Substantive: singular, capital first letter.
-* Adjective: nominativ, singular, masculine.
-* Verb: active voice, infinitive.
-* Pronouns and articles: in any morphological accident.
+* **Substantive**: singular, capital first letter.
+* **Adjective**: nominativ, singular, masculine.
+* **Verb**: active voice, infinitive.
+* **Pronouns** and **articles**: in any morphological accident.
+
+`gede` supports all types of output format offered by `tabulate` lib.
 
 ## Examples
 
-* Substantive
+* **Substantive**:
 ```
 $ gede Apfel
            Singular    Plural
@@ -42,7 +53,7 @@ Genitiv    des Apfels  der Äpfel
 Dativ      dem Apfel   den Äpfeln
 Akkusativ  den Apfel   die Äpfel
 ```
-* Pronoun
+* **Pronoun**:
 ```
 $ gede euch
            Singular    Plural
@@ -53,7 +64,7 @@ Dativ      dir         euch
 Akkusativ  dich        euch
 ```
 
-* Article
+* **Article**:
 ```
 $ gede der
            Singular                        Plural
@@ -65,15 +76,17 @@ Dativ      dem         der        dem      den
 Akkusativ  den         die        das      die
 ```
 
-* Adjective
+* **Adjective**:
 ```
-$ gede schnell
-Positiv    Komparativ    Superlativ
----------  ------------  --------------
-schnell    schneller     am schnellsten
+$ gede schnell --table-fmt fancy_grid
+╒═══════════╤══════════════╤════════════════╕
+│ Positiv   │ Komparativ   │ Superlativ     │
+╞═══════════╪══════════════╪════════════════╡
+│ schnell   │ schneller    │ am schnellsten │
+╘═══════════╧══════════════╧════════════════╛
 ```
 
-* Verb:
+* **Verb**:
 ```
 $ gede können
                Person       Wortform
@@ -88,3 +101,5 @@ Imperativ      Singular     —
 Perfekt        Partizip II              Hilfsverb
                gekonnt                  haben
 ```
+
+

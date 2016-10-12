@@ -15,7 +15,10 @@ API = 'http://de.wiktionary.org/w/api.php'
 
 @click.command()
 @click.argument('word', type=unicode)
-def cli(word):
+@click.option('--table-fmt', type=click.Choice(tabulate.tabulate_formats),
+              help='Visual text formatting for the output table',
+              default='simple')
+def cli(word, table_fmt):
     """Retrieve declination for given word in german.
 
     Specifications:
@@ -79,13 +82,13 @@ def cli(word):
                                for f in filter_out for i in e))
 
             click.echo(tabulate.tabulate(
-                [e for e in data], headers='firstrow'))
+                [e for e in data], headers='firstrow', tablefmt=table_fmt))
         else:
             click.secho('No results for word "{}". '.format(word) +
                         'Are you sure it meets the specifications?',
                         fg='yellow')
     else:
         click.secho('Error for word "{}". Code: {}. Info: {}'.format(
-            word,
+            word.encode('utf-8'),
             response.json()['error'].get('code', 'unknown'),
             response.json()['error'].get('info', 'unknown')), fg='yellow')

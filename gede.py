@@ -18,7 +18,9 @@ API = 'http://de.wiktionary.org/w/api.php'
 @click.option('--table-fmt', type=click.Choice(tabulate.tabulate_formats),
               help='Visual text formatting for the output table',
               default='simple')
-def cli(word, table_fmt):
+@click.option('-d', '--definition', is_flag=True,
+              help='Retrieve definition')
+def cli(word, definition, table_fmt):
     """Retrieve declination for given word in german."""
 
     response = requests.get(API, params={
@@ -43,8 +45,16 @@ def cli(word, table_fmt):
         table.apply_filter('rows', r'.*Alle weiteren Formen.*')
 
         click.echo(tabulate.tabulate(
-            table.rows, headers='firstrow', tablefmt=table_fmt))
+            table.rows, headers='firstrow', tablefmt=table_fmt) + '\n')
 
+        if definition:
+            bedeutungen = [e.get_text() for e in soup
+                           .find('p', title='Sinn und Bezeichnetes (Semantik)')
+                           .find_next_sibling('dl')
+                           .find_all('dd')]
+
+            click.secho('Definition', fg='blue')
+            click.echo('\n'.join(bedeutungen))
     else:
         click.secho('Error for word "{}". Code: {}. Info: {}'.format(
             word.encode('utf-8'),
@@ -80,9 +90,9 @@ class HtmlTableParser(object):
             c_cell = 0
             for cell in row.find_all(re.compile(r'(th|td)')):
 
-                if str(c_cell) in rowspan and rowspan[str(c_cell)] > 0:
+                if c_cell in rowspan and rowspan[c_cell] > 0:
                     current.append('')
-                    rowspan[str(c_cell)] -= 1
+                    rowspan[c_cell] -= 1
 
                 if cell.name == 'th':
                     current.append(click.style(
@@ -95,7 +105,7 @@ class HtmlTableParser(object):
                         int(cell['colspan']) - 1))
 
                 if cell.has_attr('rowspan'):
-                    rowspan[str(c_cell)] = int(cell['rowspan']) - 1
+                    rowspan[c_cell] = int(cell['rowspan']) - 1
 
                 c_cell += 1
             rows.append(current)

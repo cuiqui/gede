@@ -14,7 +14,7 @@ API = 'http://de.wiktionary.org/w/api.php'
 
 
 @click.command()
-@click.argument('word', type=unicode)
+@click.argument('word')
 @click.option('--table-fmt', type=click.Choice(tabulate.tabulate_formats),
               help='Visual text formatting for the output table',
               default='simple')
@@ -135,7 +135,7 @@ class Table(object):
 
     def __init__(self, data):
         self.rows = data
-        self.columns = zip(*data)
+        self.columns = list(zip(*data))
 
     def filter_empty(self):
         """ Filter empty values from columns and rows """
@@ -158,7 +158,7 @@ class Table(object):
         if data_item == 'rows':
             self.rows = [e for e in self.rows
                          if not any(regex.match(i) for i in e)]
-            self.columns = zip(*self.rows)
+            self.columns = list(zip(*self.rows))
 
         if data_item == 'columns':
             for col in self.columns[:]:

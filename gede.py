@@ -53,7 +53,7 @@ def cli(word, definition, table_fmt):
                            .find_next_sibling('dl')
                            .find_all('dd')]
 
-            click.secho('Definition', fg='blue')
+            click.secho('Definition', fg='bright_cyan')
             click.echo('\n'.join(bedeutungen))
     else:
         click.secho('Error for word "{}". Code: {}. Info: {}'.format(
@@ -96,7 +96,7 @@ class HtmlTableParser(object):
 
                 if cell.name == 'th':
                     current.append(click.style(
-                        cell.get_text().replace('\n', ' '), fg='blue'))
+                        cell.get_text().replace('\n', ' '), fg='bright_blue'))
                 else:
                     current.append(cell.get_text().replace('\n', ' '))
 
